@@ -1,0 +1,92 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "asset-docs-integration"
+version = "0.0.1"
+description = "Integration tasks for asset docs"
+authors = [
+    {name = "Josh Rhoades", email = "dev@axiomdatascience.com"},
+]
+readme = {file = "README.md", content-type = "text/markdown"}
+license = {file = "LICENSE"}
+requires-python = ">=3.12"
+keywords = ["asset-docs-integration"]
+
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+dependencies = [
+    "psycopg2-binary>=2.9.13",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-cov",
+    "mypy",
+    "types-setuptools",
+]
+dev = [
+    "ruff",
+    "pre-commit",
+    "bump-my-version",
+    "interrogate",
+]
+
+[project.urls]
+Homepage = "https://git.axiom/axiom/asset-docs-integration/"
+Repository = "https://git.axiom/axiom/asset-docs-integration/"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-dir]
+asset_docs_integration = "asset_docs_integration"
+
+[tool.ruff]
+line-length = 105
+extend-exclude = ["docs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+
+[tool.interrogate]
+ignore-init-method = true
+ignore-init-module = false
+ignore-magic = false
+ignore-semiprivate = true
+ignore-private = true
+ignore-property-decorators = true
+ignore-module = false
+fail-under = 95
+exclude = ["docs", "tests"]
+verbose = 1
+quiet = false
+color = true
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-v"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+omit = [
+    "asset_docs_integration/_version.py",
+    "asset_docs_integration/version.py",
+    "tests/*",
+]

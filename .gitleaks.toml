@@ -1,0 +1,17 @@
+title = "Custom Gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[[rules]]
+# Inspired by http://git.axiom/axiom/packrat/-/blob/dev/packrat/platforms/atn/wildlife_computers/utils.py#L16-17 example
+# which is failed to be found by default rules
+id = "byte-like-secret"
+description = "Detect secret wrapped in byte string"
+# \b anchors the `b` to a bytes-literal prefix rather than any word ending in
+# "b" (e.g. a hash ending `3d7b"`, or `class="orb"`). [rRuU]? keeps rb'...' /
+# ub'...' in scope. [^'"\n] stops the capture at the first closing quote
+# instead of running greedily to the last quote on the line.
+regex = '''\b[rRuU]?b['"]([^'"\n]{8,})['"]'''
+secretGroup = 1
+entropy = 3.5

@@ -1,0 +1,40 @@
+repos:
+
+- repo: https://github.com/econchick/interrogate
+  rev: 1.7.0
+  hooks:
+    - id: interrogate
+      additional_dependencies: [setuptools]
+      exclude: ^(docs|tests)
+      args: [--config=pyproject.toml]
+
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v5.0.0
+  hooks:
+    - id: trailing-whitespace
+      exclude: tests/data
+    - id: check-ast
+    - id: debug-statements
+    - id: end-of-file-fixer
+    - id: check-docstring-first
+    - id: check-added-large-files
+
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: v0.6.9
+  hooks:
+    - id: ruff
+      args: [--fix]
+    - id: ruff-format
+
+- repo: https://github.com/pre-commit/mirrors-mypy
+  rev: v1.13.0
+  hooks:
+  - id: mypy
+    additional_dependencies: [types-setuptools, types-requests]
+    exclude: docs
+    args: [--ignore-missing-imports]
+
+- repo: https://github.com/gitleaks/gitleaks
+  rev: v8.23.3
+  hooks:
+    - id: gitleaks
