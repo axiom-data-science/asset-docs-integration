@@ -24,6 +24,7 @@ classifiers = [
 ]
 
 dependencies = [
+    "dataclasses-json>=0.6.7",
     "psycopg2-binary>=2.9.13",
     "requests>=2.34.2",
 ]
