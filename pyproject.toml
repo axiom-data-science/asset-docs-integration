@@ -25,6 +25,7 @@ classifiers = [
 
 dependencies = [
     "psycopg2-binary>=2.9.13",
+    "requests>=2.34.2",
 ]
 
 [project.optional-dependencies]
@@ -44,6 +45,9 @@ dev = [
 [project.urls]
 Homepage = "https://git.axiom/axiom/asset-docs-integration/"
 Repository = "https://git.axiom/axiom/asset-docs-integration/"
+
+[project.scripts]
+asset_docs_pgsql_to_buoy_retriever = "asset_docs_integration.asset_docs_pgsql_to_buoy_retriever:main"
 
 [tool.setuptools]
 include-package-data = true
