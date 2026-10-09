@@ -8,13 +8,12 @@ import argparse
 import os
 import pathlib
 import sys
-from typing import Optional, Tuple
+from typing import Optional, Dict
 from urllib.parse import urlparse, ParseResult
 
-import requests
-import psycopg2
 
 from asset_docs_integration.log import logger, setup_logging
+from asset_docs_integration.pg_event import pg_event_listen_with_callback
 
 DEFAULT_PGSQL_CHANNEL_NAME = 'asset_doc_insert_or_update'
 
@@ -122,11 +121,22 @@ def listen_and_handle_asset_doc_events(args: argparse.Namespace) -> int:
         logger.error(
             f"Invalid value for Postgres URI in environment variable {ENV_NAME_PG_URI}: '{env_pg_uri}'"
         )
+        return 1
 
     logger.info(
+        # Don't print password...
         f"Using {ENV_NAME_PG_URI} to connect to {parsed_pg_uri.username}:***@{parsed_pg_uri.hostname}:{parsed_pg_uri.port}{parsed_pg_uri.path}"
     )
 
+    def buoy_retriever_callback( channel: str, payload: Dict ):
+        logger.info( f"TODO {channel}" )
+
+    # Forever listen + callback loop
+    pg_event_listen_with_callback(
+        pg_uri,
+        args.pgsql_channel_name,
+        buoy_retriever_callback,
+    )
 
     return 0
 
