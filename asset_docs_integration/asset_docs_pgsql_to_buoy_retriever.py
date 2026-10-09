@@ -14,6 +14,7 @@ from urllib.parse import urlparse, ParseResult
 
 from asset_docs_integration.log import logger, setup_logging
 from asset_docs_integration.pg_event import pg_event_listen_with_callback
+from asset_docs_integration.buoy_retriever import buoy_retriever_callback
 
 DEFAULT_PGSQL_CHANNEL_NAME = 'asset_doc_insert_or_update'
 
@@ -127,9 +128,6 @@ def listen_and_handle_asset_doc_events(args: argparse.Namespace) -> int:
         # Don't print password...
         f"Using {ENV_NAME_PG_URI} to connect to {parsed_pg_uri.username}:***@{parsed_pg_uri.hostname}:{parsed_pg_uri.port}{parsed_pg_uri.path}"
     )
-
-    def buoy_retriever_callback( channel: str, payload: Dict ):
-        logger.info( f"TODO {channel}" )
 
     # Forever listen + callback loop
     pg_event_listen_with_callback(

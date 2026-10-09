@@ -16,7 +16,7 @@ from asset_docs_integration.log import logger
 def pg_event_listen_with_callback(
     pg_uri: str,
     pg_channel_name: str,
-    event_callback: Optional[Callable[[str, Any], None]] = None
+    event_callback: Optional[Callable[[str, str, Any], None]] = None
 ):
         """
         https://www.psycopg.org/docs/advanced.html#asynchronous-notifications
@@ -43,24 +43,40 @@ def pg_event_listen_with_callback(
                 else:
                     pg_con.poll()
 
-                    dedup: Dict[Tuple[str,str],bool] = {}
+                    dedup: Dict[Tuple[str,str],Dict] = {}
 
+                    # drain all pending async notifications, deduplicating
+                    # potential back-to-back events on the same object.
                     while pg_con.notifies:
                         notify = pg_con.notifies.pop()
                         if not notify:
                             logger.info(f"NOTIFY payload not correct: {notify}.")
                         else:
+                            payload = json.loads(notify.payload)
 
-                            dedup[ ( notify.channel, notify.payload ) ] = True
+                            # remove diagnostic fields (when unused)
+                            # for tg in ( 'TG_OP', 'TG_NAME', ):
+                            #     if tg in payload:
+                            #         del payload[tg]
 
-                    logger.warning( repr( dedup ) )
-                    for ( ( notify_channel, notify_payload ), _ ) in dedup.items():
+                            # TODO: this likely needs a revisit to support a
+                            # more generic consideration for 'keys' for an
+                            # incoming notification.
+
+                            identifier = None
+
+                            if 'uuid' in payload and payload['uuid']:
+                                identifier = payload['uuid']
+                            else:
+                                identifier = notify.payload
+
+                            dedup[ ( notify.channel, identifier ) ] = payload
+
+                    # Callback for each of the deduplicated document events
+                    for ( ( notify_channel, notify_identifier ), notify_payload ) in dedup.items():
 
                         try:
-
-                            payload = json.loads(notify_payload)
-
-                            logger.info(
+                            logger.debug(
                                 f"Received event on channel {notify_channel}"
                             )
 
@@ -69,7 +85,8 @@ def pg_event_listen_with_callback(
 
                             event_callback(
                                 notify_channel,
-                                payload
+                                notify_identifier,
+                                notify_payload
                             )
 
                         except BaseException as e:
