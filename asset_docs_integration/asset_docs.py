@@ -1,12 +1,12 @@
-
-from typing import Any, List, Optional
 from dataclasses import dataclass
+from typing import Any, List, Optional
+
 from dataclasses_json import dataclass_json
+
 
 @dataclass_json
 @dataclass
-class AssetDocsPayload():
-
+class AssetDocsPayload:
     uuid: Optional[str] = None
     owner_sub: Optional[str] = None
     lock_sub: Optional[str] = None
