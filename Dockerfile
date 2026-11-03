@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM python:3.12-slim-bookworm
+FROM python:3.12-slim-bookworm AS base
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
@@ -43,3 +43,11 @@ LABEL org.opencontainers.image.version="${VERSION}"
 LABEL org.opencontainers.image.revision="${GIT_COMMIT}"
 LABEL org.opencontainers.image.ref.name="${GIT_REF}"
 LABEL org.opencontainers.image.created="${BUILD_DATE}"
+
+FROM base AS develop
+
+RUN apt-get update && apt-get install -y --no-install-recommends git \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --extra test --extra dev

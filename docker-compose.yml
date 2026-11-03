@@ -1,12 +1,22 @@
 services:
   listener_to_buoy_retriever:
-    image: asset-docs-integration
+    image: asset-docs-integration:latest
     build:
       context:      .
       dockerfile:   Dockerfile
+      target:       base
     environment:
       PG_URI: "${PG_URI}"
       API_TOKEN: "${API_TOKEN}"
     network_mode: host
     command: >
        asset_docs_pgsql_to_buoy_retriever --buoy-retriever-url http://localhost:12345/br
+
+  tester:
+    image: asset-docs-integration:develop
+    build:
+      context:      .
+      dockerfile:   Dockerfile
+      target:       develop
+    command: >
+       pytest
