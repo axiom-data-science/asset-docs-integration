@@ -10,7 +10,10 @@ from typing import Optional
 from urllib.parse import ParseResult, urlparse
 from functools import partial
 
-from asset_docs_integration.buoy_retriever import buoy_retriever_callback
+from asset_docs_integration.buoy_retriever import (
+    buoy_retriever_callback,
+    BRCallbackConfig
+)
 from asset_docs_integration.log import logger, setup_logging
 from asset_docs_integration.pg_event import pg_event_listen_with_callback
 
@@ -64,10 +67,18 @@ def main():
 
     parser.add_argument(
         "--buoy-retriever-dataset-config-slug",
-        "--dataset--config-slug",
+        "--dataset-config-slug",
         "--config-slug",
         type=str,
         help="The BR target dataset config slug (based on pipeline name if not set)",
+    )
+
+    parser.add_argument(
+        "--buoy-retriever-dataset-config-id",
+        "--dataset-config-id",
+        "--config-id",
+        type=str,
+        help="The BR target dataset config id",
     )
 
     parser.add_argument(
@@ -162,6 +173,7 @@ def listen_and_handle_asset_doc_events(args: argparse.Namespace) -> int:
     if dataset_config_slug is None:
         dataset_config_slug = f"{pipeline_slug}_dataset_config"
 
+    dataset_config_id: str = args.buoy_retriever_dataset_config_id or None
 
     logger.info(
         f"Using BR pipeline slug: {pipeline_slug}"
@@ -172,6 +184,11 @@ def listen_and_handle_asset_doc_events(args: argparse.Namespace) -> int:
     logger.info(
         f"Using BR pipeline dataset config: {dataset_config_slug}"
     )
+
+    if dataset_config_id:
+        logger.info(
+            f"Using BR pipeline dataset config ID: {dataset_config_id}"
+        )
 
     logger.info(
         (
@@ -188,11 +205,14 @@ def listen_and_handle_asset_doc_events(args: argparse.Namespace) -> int:
         args.pgsql_channel_name,
         partial(
             buoy_retriever_callback,
-            buoy_retriever_base_url,
-            api_token,
-            pipeline_slug,
-            dataset_slug,
-            dataset_config_slug,
+            BRCallbackConfig(
+                buoy_retriever_base_url,
+                api_token,
+                pipeline_slug,
+                dataset_slug,
+                dataset_config_slug,
+                dataset_config_id
+            )
         ),
     )
 

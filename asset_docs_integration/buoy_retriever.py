@@ -90,24 +90,28 @@ def _get_datasets_by_pipeline_slug( br_base_url: str , br_api_token: str, pipeli
 
     return resp.json()
 
+@dataclass
+class BRCallbackConfig(object):
+    br_base_url: str
+    br_api_token: str
+    br_pipeline_slug: str
+    br_dataset_slug: str
+    br_dataset_config_slug: str
+    br_dataset_config_id: Optional[str]
 
 
 def buoy_retriever_callback(
-    br_base_url: str,
-    br_api_token: str,
-    br_pipeline_slug: str,
-    br_dataset_slug: str,
-    br_dataset_config_slug: str,
+    cfg: BRCallbackConfig,
     channel: str,
     identifier: str,
     payload: Dict
 ):
 
-    assert br_base_url is not None
-    assert br_api_token is not None
-    assert br_pipeline_slug is not None
-    assert br_dataset_slug is not None
-    assert br_dataset_config_slug is not None
+    assert cfg.br_base_url is not None
+    assert cfg.br_api_token is not None
+    assert cfg.br_pipeline_slug is not None
+    assert cfg.br_dataset_slug is not None
+    assert cfg.br_dataset_config_slug is not None
 
     tg_op: Optional[str] = payload.get("TG_OP", None)
     logger.info(f"Handling {tg_op} event for channel {channel}, identifier: {identifier}")
@@ -124,7 +128,7 @@ def buoy_retriever_callback(
 
     # logger.warning(repr(adp))
 
-    list_pipelines = _get_pipelines( br_base_url, br_api_token )
+    list_pipelines = _get_pipelines( cfg.br_base_url, cfg.br_api_token )
 
     assert isinstance( list_pipelines, List )
 
@@ -133,72 +137,97 @@ def buoy_retriever_callback(
     for p in list_pipelines:
         br_pipeline = BRPipeline.from_dict( p )
 
-        if br_pipeline.slug == br_pipeline_slug:
+        if br_pipeline.slug == cfg.br_pipeline_slug:
             found_pipeline = br_pipeline
             break
 
     if found_pipeline is None:
         logger.warning(
-            f"Could not find pipeline slug {br_pipeline_slug}"
+            f"Could not find pipeline slug {cfg.br_pipeline_slug}"
         )
         return
 
     logger.info(
-        f"Found {br_pipeline_slug}, {repr(found_pipeline)}"
+        f"Found {cfg.br_pipeline_slug}, {repr(found_pipeline)}"
     )
 
     found_dataset: Optional[BRPipeline] = None
 
     list_pipeline_datasets = _get_datasets_by_pipeline_slug(
-        br_base_url,
-        br_api_token,
+        cfg.br_base_url,
+        cfg.br_api_token,
         found_pipeline.slug,
     )
 
     for ds in list_pipeline_datasets:
         br_dataset = BRDataset.from_dict( ds )
 
-        if br_dataset.slug == br_dataset_slug:
+        if br_dataset.slug == cfg.br_dataset_slug:
             found_dataset = br_dataset
             break
 
     if found_dataset is None:
         logger.warning(
-            f"Could not find dataset slug {br_dataset_slug}, "
-            f"existing for pipeline {br_pipeline_slug}: {repr(list_pipeline_datasets)}"
+            f"Could not find dataset slug {cfg.br_dataset_slug}, "
+            f"existing for pipeline {cfg.br_pipeline_slug}: {repr(list_pipeline_datasets)}"
         )
         return
 
     logger.info(
-        f"Found {br_dataset_slug}, {repr(found_dataset)}"
+        f"Found {cfg.br_dataset_slug}, {repr(found_dataset)}"
     )
 
     found_dataset_config: Optional[BRDatasetConfig] = None
 
     list_pipeline_dataset_configs = _get_dataset_configs_by_pipeline_slug(
-        br_base_url,
-        br_api_token,
+        cfg.br_base_url,
+        cfg.br_api_token,
         found_pipeline.slug,
     )
 
     for dsc in list_pipeline_dataset_configs:
         br_dataset_config = BRDatasetConfig.from_dict( dsc )
 
-        if br_dataset_config.slug == br_dataset_config_slug:
+        if br_dataset_config.slug == cfg.br_dataset_config_slug:
             found_dataset_config = br_dataset_config
             break
 
     if found_dataset_config is None:
         logger.warning(
-            f"Could not find dataset config slug {br_dataset_config_slug}, "
-            f"for existing pipeline {br_pipeline_slug}: {repr(list_pipeline_dataset_configs)}"
+            f"Could not find dataset config slug {cfg.br_dataset_config_slug}, "
+            f"for existing pipeline {cfg.br_pipeline_slug}: {repr(list_pipeline_dataset_configs)}"
         )
         return
 
     logger.info(
-        f"Found {br_dataset_config_slug}, {repr(found_dataset_config)}"
-   )
+        f"Found {cfg.br_dataset_config_slug}, {repr(found_dataset_config)}"
+    )
 
+    passed_config_id = cfg.br_dataset_config_id
+
+    found_dataset_config_id: str = str( found_dataset_config.id or '' )
+
+    if not passed_config_id and not found_dataset_config_id:
+        logger.error( "Unable to determine config ID" )
+        return
+
+    if (
+        passed_config_id and
+        found_dataset_config_id and
+        passed_config_id != found_dataset_config_id
+    ):
+        logger.error(
+            (
+                "Mismatch between passed dataset config ID and found dataset "
+                f"config ID: {passed_config_id} != {found_dataset_config.id}"
+            )
+        )
+        return
+
+    target_config_id: Optional[str] = ( passed_config_id or found_dataset_config_id )
+
+    assert target_config_id, \
+        "Unable to determine usable dataset config target ID."
 
     # TODO: Create dataset / dataset config from current document
 
