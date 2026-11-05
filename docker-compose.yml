@@ -10,7 +10,7 @@ services:
       API_TOKEN: "${API_TOKEN}"
     network_mode: host
     command: >
-       asset_docs_pgsql_to_buoy_retriever --buoy-retriever-url http://localhost:12345/br
+       asset_docs_pgsql_to_buoy_retriever --buoy-retriever-url "${BR_BASE_URL:-http://localhost:12345/backend/}"
 
   tester:
     image: asset-docs-integration:develop
