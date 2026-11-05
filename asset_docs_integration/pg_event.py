@@ -76,7 +76,13 @@ def pg_event_listen_with_callback(
                         event_callback(notify_channel, notify_identifier, notify_payload)
 
                     except BaseException as e:
-                        logger.info(f"Could not parse {notify_channel} / {notify_payload}: {e}")
+                        logger.info(
+                            (
+                                f"Could not parse {notify_channel} / "
+                                f"{notify_payload}: {e}"
+                            ),
+                            exc_info=True
+                        )
 
                 dedup.clear()
 
