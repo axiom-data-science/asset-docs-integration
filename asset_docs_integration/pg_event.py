@@ -78,8 +78,8 @@ def pg_event_listen_with_callback(
                     except BaseException as e:
                         logger.info(
                             (
-                                f"Could not parse {notify_channel} / "
-                                f"{notify_payload}: {e}"
+                                f"Could not handle {notify_channel} event / "
+                                f"{notify_payload}"
                             ),
                             exc_info=True
                         )

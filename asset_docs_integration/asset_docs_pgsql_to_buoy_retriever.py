@@ -88,6 +88,16 @@ def main():
         default=DEFAULT_PGSQL_CHANNEL_NAME,
     )
 
+    parser.add_argument(
+        "--asset-docs-document-slug",
+        "--asset-doc-document-slug",
+        "--document-slug",
+        type=str,
+        help="The unique document slug to listen to for updates",
+        required=True,
+
+    )
+
     args = parser.parse_args()
 
     return listen_and_handle_asset_doc_events(args)
@@ -99,6 +109,7 @@ def listen_and_handle_asset_doc_events(args: argparse.Namespace) -> int:
     assert args.pgsql_channel_name and isinstance(args.pgsql_channel_name, str)
     assert args.buoy_retriever_base_url and isinstance(args.buoy_retriever_base_url, str)
     assert args.buoy_retriever_pipeline_slug and isinstance(args.buoy_retriever_pipeline_slug, str)
+    assert args.asset_docs_document_slug and isinstance(args.asset_docs_document_slug, str)
 
     api_token: Optional[str] = None
 
@@ -155,6 +166,12 @@ def listen_and_handle_asset_doc_events(args: argparse.Namespace) -> int:
         )
         return 1
 
+    asset_docs_document_slug = args.asset_docs_document_slug
+
+    logger.info(
+        f"Listening for document events on slug: {asset_docs_document_slug}"
+    )
+
     buoy_retriever_base_url = args.buoy_retriever_base_url
 
     logger.info(
@@ -206,6 +223,7 @@ def listen_and_handle_asset_doc_events(args: argparse.Namespace) -> int:
         partial(
             buoy_retriever_callback,
             BRCallbackConfig(
+                asset_docs_document_slug,
                 buoy_retriever_base_url,
                 api_token,
                 pipeline_slug,

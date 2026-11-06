@@ -14,6 +14,8 @@ BR_PATH_GET_PIPELINE='api/pipelines/'
 BR_PATH_GET_DATASETS_BY_PIPELINE_SLUG='api/datasets/by-pipeline/'
 # 'api/configs/by-pipeline/{pipeline_slug}/'
 BR_PATH_GET_DATASET_CONFIGS_BY_PIPELINE_SLUG='api/configs/by-pipeline/'
+# 'api/configs/{id}/'
+BR_PATH_POST_DATASET_CONFIGS='api/configs/'
 
 @dataclass_json
 @dataclass
@@ -26,6 +28,8 @@ class BRPipeline:
 class BRDataset:
     slug: Optional[str] = None
     state: Optional[str] = None
+    user_can_view: Optional[bool] = None
+    user_can_publish: Optional[bool] = None
 
 @dataclass_json
 @dataclass
@@ -90,8 +94,38 @@ def _get_datasets_by_pipeline_slug( br_base_url: str , br_api_token: str, pipeli
 
     return resp.json()
 
+def _post_dataset_configs(
+    br_base_url: str ,
+    br_api_token: str,
+    dataset_config_id: str,
+    config_payload: Dict
+) -> Any:
+
+    assert dataset_config_id
+    assert config_payload and isinstance( config_payload, Dict )
+
+    # api/configs/{id}
+    _url = urljoin( br_base_url, BR_PATH_POST_DATASET_CONFIGS )
+    _url = urljoin( _url, f"{dataset_config_id}/" )
+
+    resp = requests.post(
+        _url,
+        headers={
+            'Accept': 'application/json',
+            BR_X_API_TOKEN: br_api_token,
+        },
+        json={
+            'config': config_payload,
+        }
+    )
+
+    resp.raise_for_status()
+
+    return resp.json()
+
 @dataclass
 class BRCallbackConfig(object):
+    ad_document_slug: str
     br_base_url: str
     br_api_token: str
     br_pipeline_slug: str
@@ -107,6 +141,7 @@ def buoy_retriever_callback(
     payload: Dict
 ):
 
+    assert cfg.ad_document_slug is not None
     assert cfg.br_base_url is not None
     assert cfg.br_api_token is not None
     assert cfg.br_pipeline_slug is not None
@@ -114,6 +149,7 @@ def buoy_retriever_callback(
     assert cfg.br_dataset_config_slug is not None
 
     tg_op: Optional[str] = payload.get("TG_OP", None)
+
     logger.info(f"Handling {tg_op} event for channel {channel}, identifier: {identifier}")
 
     adp: Optional[AssetDocsPayload] = None
@@ -127,6 +163,19 @@ def buoy_retriever_callback(
         )
 
     # logger.warning(repr(adp))
+    adp_slug = getattr( adp, 'slug', None )
+
+    if not adp_slug:
+        logger.warning( "Unable to determine slug from payload, skipping" )
+        return
+
+    if adp_slug != cfg.ad_document_slug:
+        logger.warning( f"Skipping slug ({adp_slug})" )
+        return
+
+    logger.info(
+        f"{identifier} has slug {cfg.ad_document_slug}, proceed with handling."
+    )
 
     list_pipelines = _get_pipelines( cfg.br_base_url, cfg.br_api_token )
 
@@ -173,7 +222,7 @@ def buoy_retriever_callback(
         )
         return
 
-    logger.info(
+    logger.debug(
         f"Found {cfg.br_dataset_slug}, {repr(found_dataset)}"
     )
 
@@ -199,7 +248,7 @@ def buoy_retriever_callback(
         )
         return
 
-    logger.info(
+    logger.debug(
         f"Found {cfg.br_dataset_config_slug}, {repr(found_dataset_config)}"
     )
 
@@ -229,6 +278,20 @@ def buoy_retriever_callback(
     assert target_config_id, \
         "Unable to determine usable dataset config target ID."
 
-    # TODO: Create dataset / dataset config from current document
+    post_config_resp = _post_dataset_configs(
+        cfg.br_base_url,
+        cfg.br_api_token,
+        target_config_id,
+        adp.to_dict()
+    )
+
+    logger.info(
+        (
+            f"Updated dataset config {target_config_id} with document payload "
+            f"from document ({identifier} / {adp_slug}), affecting "
+            f"pipeline: {found_pipeline.slug} / {found_dataset.slug} / "
+            f"{found_dataset_config.slug}"
+        )
+    )
 
     return
