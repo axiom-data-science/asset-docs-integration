@@ -9,7 +9,9 @@ from asset_docs_integration.log import logger
 
 
 def pg_event_listen_with_callback(
-    pg_uri: str, pg_channel_name: str, event_callback: Optional[Callable[[str, str, Any], None]] = None
+    pg_uri: str,
+    pg_channel_name: str,
+    event_callback: Optional[Callable[[psycopg2.extensions.connection, str, str, Any], None]] = None
 ):
     """
     https://www.psycopg.org/docs/advanced.html#asynchronous-notifications
@@ -73,7 +75,12 @@ def pg_event_listen_with_callback(
                         if not event_callback:
                             continue
 
-                        event_callback(notify_channel, notify_identifier, notify_payload)
+                        event_callback(
+                            pg_con,
+                            notify_channel,
+                            notify_identifier,
+                            notify_payload
+                        )
 
                     except BaseException as e:
                         logger.info(

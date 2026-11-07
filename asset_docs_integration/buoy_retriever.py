@@ -1,5 +1,6 @@
 from typing import Any, Dict, Optional, List
 from urllib.parse import urljoin
+import psycopg2
 import requests
 
 from asset_docs_integration.asset_docs import AssetDocsPayload
@@ -136,6 +137,7 @@ class BRCallbackConfig(object):
 
 def buoy_retriever_callback(
     cfg: BRCallbackConfig,
+    pg_con: psycopg2.extensions.connection,
     channel: str,
     identifier: str,
     payload: Dict
@@ -147,6 +149,8 @@ def buoy_retriever_callback(
     assert cfg.br_pipeline_slug is not None
     assert cfg.br_dataset_slug is not None
     assert cfg.br_dataset_config_slug is not None
+
+    assert isinstance( pg_con, psycopg2.extensions.connection )
 
     tg_op: Optional[str] = payload.get("TG_OP", None)
 
