@@ -128,6 +128,8 @@ def _post_dataset_configs(
 @dataclass
 class BRCallbackConfig(object):
     ad_document_slug: str
+    ad_schema: str
+    ad_ncojson_view: str
     br_base_url: str
     br_api_token: str
     br_pipeline_slug: str
@@ -287,7 +289,7 @@ def buoy_retriever_callback(
 
     crs = pg_con.cursor()
 
-    # TODO: parameterize
+    # TODO: parameterize?
     _schema = 'asset_docs'
     _view = 'document_acdd_verbose_vw'
     _uuid = 'uuid'
@@ -304,8 +306,8 @@ def buoy_retriever_callback(
             WHERE v.{idcol} = %s
             """
         ).format(
-            schema=Identifier( _schema),
-            view=Identifier( _view ),
+            schema=Identifier( cfg.ad_schema ),
+            view=Identifier( cfg.ad_ncojson_view ),
             idcol=Identifier( _uuid ),
         ),
         ( adp.uuid, )

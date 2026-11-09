@@ -98,6 +98,22 @@ def main():
 
     )
 
+    parser.add_argument(
+        "--asset-docs-ncojson-view",
+        "--ncojson-view",
+        type=str,
+        help="The view to use to retrieve ncoJSON",
+        default='document_acdd_verbose_vw'
+
+    )
+
+    parser.add_argument(
+        "--asset-docs-schema",
+        type=str,
+        help="The schema prefix for retrieving asset docs information",
+        default='asset_docs'
+    )
+
     args = parser.parse_args()
 
     return listen_and_handle_asset_doc_events(args)
@@ -224,6 +240,8 @@ def listen_and_handle_asset_doc_events(args: argparse.Namespace) -> int:
             buoy_retriever_callback,
             BRCallbackConfig(
                 asset_docs_document_slug,
+                args.asset_docs_schema,
+                args.asset_docs_ncojson_view,
                 buoy_retriever_base_url,
                 api_token,
                 pipeline_slug,
