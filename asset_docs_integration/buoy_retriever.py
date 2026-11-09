@@ -1,6 +1,7 @@
 from typing import Any, Dict, Optional, List
 from urllib.parse import urljoin
 import psycopg2
+from psycopg2.sql import Identifier, SQL
 import requests
 
 from asset_docs_integration.asset_docs import AssetDocsPayload
@@ -160,11 +161,13 @@ def buoy_retriever_callback(
 
     try:
         adp = AssetDocsPayload.from_dict(payload)
+        assert isinstance( adp, AssetDocsPayload )
     except BaseException:
         logger.error(
             f"Could not deserialize payload for {AssetDocsPayload.__name__}",
             exc_info=True
         )
+        return
 
     # logger.warning(repr(adp))
     adp_slug = getattr( adp, 'slug', None )
@@ -282,12 +285,50 @@ def buoy_retriever_callback(
     assert target_config_id, \
         "Unable to determine usable dataset config target ID."
 
+    crs = pg_con.cursor()
+
+    # TODO: parameterize
+    _schema = 'asset_docs'
+    _view = 'document_acdd_verbose_vw'
+    _uuid = 'uuid'
+
+    crs.execute(
+        SQL(
+            """
+            SELECT
+                v.{idcol},
+                v.slug,
+                v.dataset_id,
+                v.nco_json
+            FROM {schema}.{view} v
+            WHERE v.{idcol} = %s
+            """
+        ).format(
+            schema=Identifier( _schema),
+            view=Identifier( _view ),
+            idcol=Identifier( _uuid ),
+        ),
+        ( adp.uuid, )
+    )
+
+    (res_uuid, res_slug, res_dataset_id, res_nco_json ) = crs.fetchone()
+
+    assert res_uuid == adp.uuid, \
+        f"Unexpected ncoJSON query result"
+
+    logger.info(
+        f"Retrieved ncoJSON for doc {res_slug}, dataset_id: {res_dataset_id}"
+    )
+
     post_config_resp = _post_dataset_configs(
         cfg.br_base_url,
         cfg.br_api_token,
         target_config_id,
-        adp.to_dict()
+        res_nco_json
     )
+
+    assert str( post_config_resp['id'] ) == str( target_config_id ), \
+        f"Unexpected config update response: {repr(post_config_resp)}"
 
     logger.info(
         (
