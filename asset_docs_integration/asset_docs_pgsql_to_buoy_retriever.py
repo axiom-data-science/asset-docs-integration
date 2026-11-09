@@ -8,8 +8,12 @@ import pathlib
 import sys
 from typing import Optional
 from urllib.parse import ParseResult, urlparse
+from functools import partial
 
-from asset_docs_integration.buoy_retriever import buoy_retriever_callback
+from asset_docs_integration.buoy_retriever import (
+    buoy_retriever_callback,
+    BRCallbackConfig
+)
 from asset_docs_integration.log import logger, setup_logging
 from asset_docs_integration.pg_event import pg_event_listen_with_callback
 
@@ -47,10 +51,67 @@ def main():
     )
 
     parser.add_argument(
+        "--buoy-retriever-pipeline-slug",
+        "--pipeline-slug",
+        type=str,
+        help="The BR target pipeline slug",
+        required=True
+    )
+
+    parser.add_argument(
+        "--buoy-retriever-dataset-slug",
+        "--dataset-slug",
+        type=str,
+        help="The BR target dataset slug (based on pipeline if not set)",
+    )
+
+    parser.add_argument(
+        "--buoy-retriever-dataset-config-slug",
+        "--dataset-config-slug",
+        "--config-slug",
+        type=str,
+        help="The BR target dataset config slug (based on pipeline name if not set)",
+    )
+
+    parser.add_argument(
+        "--buoy-retriever-dataset-config-id",
+        "--dataset-config-id",
+        "--config-id",
+        type=str,
+        help="The BR target dataset config id",
+    )
+
+    parser.add_argument(
         "--pgsql-channel-name",
         type=str,
         help=f"The Postgres event channel to listen on (default: {DEFAULT_PGSQL_CHANNEL_NAME})",
         default=DEFAULT_PGSQL_CHANNEL_NAME,
+    )
+
+    parser.add_argument(
+        "--asset-docs-document-slug",
+        "--asset-doc-document-slug",
+        "--document-slug",
+        type=str,
+        help="The unique document slug to listen to for updates",
+        required=True,
+
+    )
+
+    parser.add_argument(
+        "--asset-docs-ncojson-view",
+        "--ncojson-view",
+        type=str,
+        help="The view to use to retrieve ncoJSON",
+        default='document_acdd_verbose_vw'
+
+    )
+
+    parser.add_argument(
+        "--asset-docs-schema",
+        type=str,
+        help="The schema prefix for retrieving asset docs information",
+        default='asset_docs'
     )
 
     args = parser.parse_args()
@@ -63,6 +124,8 @@ def listen_and_handle_asset_doc_events(args: argparse.Namespace) -> int:
 
     assert args.pgsql_channel_name and isinstance(args.pgsql_channel_name, str)
     assert args.buoy_retriever_base_url and isinstance(args.buoy_retriever_base_url, str)
+    assert args.buoy_retriever_pipeline_slug and isinstance(args.buoy_retriever_pipeline_slug, str)
+    assert args.asset_docs_document_slug and isinstance(args.asset_docs_document_slug, str)
 
     api_token: Optional[str] = None
 
@@ -95,9 +158,9 @@ def listen_and_handle_asset_doc_events(args: argparse.Namespace) -> int:
         return 1
 
     if api_token_found_env is True:
-        logger.info(f"{ENV_NAME_API_TOKEN}: (from environment)")
+        logger.info(f"BR {ENV_NAME_API_TOKEN}: (from environment)")
     if api_token_found_path is True:
-        logger.info(f"{ENV_NAME_API_TOKEN}: (from path: {str(the_api_token_path)})")
+        logger.info(f"BR {ENV_NAME_API_TOKEN}: (from path: {str(the_api_token_path)})")
 
     pg_uri: Optional[str] = None
 
@@ -119,6 +182,47 @@ def listen_and_handle_asset_doc_events(args: argparse.Namespace) -> int:
         )
         return 1
 
+    asset_docs_document_slug = args.asset_docs_document_slug
+
+    logger.info(
+        f"Listening for document events on slug: {asset_docs_document_slug}"
+    )
+
+    buoy_retriever_base_url = args.buoy_retriever_base_url
+
+    logger.info(
+        f"Using BR base URL: {buoy_retriever_base_url}"
+    )
+
+    pipeline_slug: str = args.buoy_retriever_pipeline_slug
+
+    dataset_slug: str = args.buoy_retriever_dataset_slug
+
+    if dataset_slug is None:
+        dataset_slug = f"{pipeline_slug}_dataset"
+
+    dataset_config_slug: str = args.buoy_retriever_dataset_config_slug
+
+    if dataset_config_slug is None:
+        dataset_config_slug = f"{pipeline_slug}_dataset_config"
+
+    dataset_config_id: str = args.buoy_retriever_dataset_config_id or None
+
+    logger.info(
+        f"Using BR pipeline slug: {pipeline_slug}"
+    )
+    logger.info(
+        f"Using BR pipeline dataset: {dataset_slug}"
+    )
+    logger.info(
+        f"Using BR pipeline dataset config: {dataset_config_slug}"
+    )
+
+    if dataset_config_id:
+        logger.info(
+            f"Using BR pipeline dataset config ID: {dataset_config_id}"
+        )
+
     logger.info(
         (
             # Don't print password...
@@ -132,7 +236,20 @@ def listen_and_handle_asset_doc_events(args: argparse.Namespace) -> int:
     pg_event_listen_with_callback(
         pg_uri,
         args.pgsql_channel_name,
-        buoy_retriever_callback,
+        partial(
+            buoy_retriever_callback,
+            BRCallbackConfig(
+                asset_docs_document_slug,
+                args.asset_docs_schema,
+                args.asset_docs_ncojson_view,
+                buoy_retriever_base_url,
+                api_token,
+                pipeline_slug,
+                dataset_slug,
+                dataset_config_slug,
+                dataset_config_id
+            )
+        ),
     )
 
     return 0

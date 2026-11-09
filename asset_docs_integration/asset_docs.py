@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 from dataclasses_json import dataclass_json
 
@@ -30,3 +30,11 @@ class AssetDocsPayload:
     dataset_extent_geom: Optional[str] = None
     dataset_start_time: Optional[str] = None
     dataset_end_time: Optional[str] = None
+
+    # Additional related fields
+    object_type_slug: Optional[str] = None
+    object_type_category: Optional[str] = None
+    object_type_data: Optional[Dict] = None
+    object_schema_uuid: Optional[str] = None
+    object_schema_slug: Optional[str] = None
+    object_schema_version: Optional[int] = None
