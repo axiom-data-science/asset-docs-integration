@@ -1,4 +1,5 @@
 from typing import Any, Dict, Optional, List
+from copy import deepcopy
 from urllib.parse import urljoin
 import psycopg2
 from psycopg2.sql import Identifier, SQL
@@ -296,8 +297,6 @@ def buoy_retriever_callback(
     crs = pg_con.cursor()
 
     # TODO: parameterize?
-    _schema = 'asset_docs'
-    _view = 'document_acdd_verbose_vw'
     _uuid = 'uuid'
 
     crs.execute(
@@ -328,11 +327,40 @@ def buoy_retriever_callback(
         f"Retrieved ncoJSON for doc {res_slug}, dataset_id: {res_dataset_id}"
     )
 
+    # TODO: Parameterize
+    _top_level_cfg_nco_json_property_name = 'ncojson'
+
+    # Do our best to merge the existing dataset config's config field with our
+    # NCO-JSON by inserting the NCO-JSON at a known top-level property name
+    merged_config = deepcopy( found_dataset_config.config )
+
+    if merged_config is None:
+        merged_config = {}
+
+    assert (
+        isinstance( merged_config, dict )
+    ), (
+        "Expected dataset_config.config field to be a dict (JSON object), "
+        f"got: {repr(merged_config)}"
+    )
+
+    if _top_level_cfg_nco_json_property_name not in merged_config:
+        merged_config[_top_level_cfg_nco_json_property_name] = {}
+
+    assert isinstance(
+        merged_config[_top_level_cfg_nco_json_property_name],
+        dict
+    )
+
+    # Set the nco-json fields in the merged valuec (variables, attributes)
+    for ( k, v ) in res_nco_json.items():
+        merged_config[_top_level_cfg_nco_json_property_name][k] = v
+
     post_config_resp = _post_dataset_configs(
         cfg.br_base_url,
         cfg.br_api_token,
         target_config_id,
-        res_nco_json
+        merged_config
     )
 
     assert str( post_config_resp['id'] ) == str( target_config_id ), \
