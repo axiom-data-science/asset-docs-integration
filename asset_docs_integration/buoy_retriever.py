@@ -246,7 +246,13 @@ def buoy_retriever_callback(
     for dsc in list_pipeline_dataset_configs:
         br_dataset_config = BRDatasetConfig.from_dict( dsc )
 
-        if br_dataset_config.slug == cfg.br_dataset_config_slug:
+        if (
+            br_dataset_config.slug == cfg.br_dataset_config_slug or
+            # the API returns something like my_slug_testing when a config is
+            # marked with the 'testing' status. So we check for both equality
+            # as well as startwith conditions
+            str( br_dataset_config.slug ).startswith( cfg.br_dataset_config_slug )
+        ):
             found_dataset_config = br_dataset_config
             break
 
